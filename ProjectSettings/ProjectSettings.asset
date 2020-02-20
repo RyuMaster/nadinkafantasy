@@ -244,8 +244,8 @@ PlayerSettings:
   AndroidTargetDevice: 0
   AndroidSplashScreenScale: 0
   androidSplashScreen: {fileID: 2800000, guid: d0deff49668ccc3459dc9c34a9983e10, type: 3}
-  AndroidKeystoreName: D:/NadinkaFantasy/NadinkaFantasy/user.keystore
-  AndroidKeyaliasName: ryumaster
+  AndroidKeystoreName: C:/projects/nadinkafantasy/keystore/user.keystore
+  AndroidKeyaliasName: 
   AndroidTVCompatibility: 1
   AndroidIsGame: 1
   AndroidEnableTango: 0
