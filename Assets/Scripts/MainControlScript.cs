@@ -3,32 +3,57 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Networking;
 
 [Serializable]
-public class ReulstInfo
+public class MessageEntity
 {
-    public string info;
-    public string timer;
+    public string messages;
+    public int characterId;
+}
+
+public class JsonHelper
+{
+    public static T[] getJsonArray<T>(string json)
+    {
+        string newJson = "{ \"array\": " + json + "}";
+        Wrapper<T> wrapper = JsonUtility.FromJson<Wrapper<T>>(newJson);
+        return wrapper.array;
+    }
+
+    [Serializable]
+    private class Wrapper<T>
+    {
+        public T[] array;
+    }
+}
+
+[Serializable]
+public class CharacterInfo
+{
+    public int id;
+    public string name;
+    public string description;
 }
 
 
 public class MainControlScript : MonoBehaviour
 {
+    private readonly String HOST_URL = "http://192.168.1.6:3001";
 
     public GameObject loginPanel;
     public GameObject loadingPanel;
 
-    public GameObject timerObject;
     public GameObject textPanel;
     public InputField playerName;
     public Button submitButton;
     public Text loadingText;
     public Text messageText;
-    private string pName = "";
+	public ScrollRect scrollView;
 
+    private string currentCharacterName = "";
+    private int currentCharacterId = -1;
 
-    public GameObject timerPanel;
-    public Text timerText;
     public InputField chatMessage;
     public Text locationText;
 
@@ -39,90 +64,79 @@ public class MainControlScript : MonoBehaviour
     //public List<double> latitudes;
     //public List<double> distances;
 
-    public List<string> loginList;
+	public List<CharacterInfo> loginList = new List<CharacterInfo>();
+	private string lastChatMessage = "";
+	private string lastReceivedChatLine = "";
 
     public OnlineMaps map;
     public OnlineMapsUIImageControl mapControl;
 
 
-    float timerInt;
-    bool firstEntry;
+	bool soundPlayed;
 
     void  Update()
     {
-        if (timerInt > 0)
-        {
-            timerInt -= Time.deltaTime;
-            TimeSpan time = TimeSpan.FromSeconds((int)timerInt);
 
-
-            timerText.text = time.Hours + ":" + time.Minutes + ":" + time.Seconds;
-        }
-        else
-        {
-            timerText.text = "00:00:00";
-        }
     }
 
     // Use this for initialization
     void Start()
     {
+        Debug.Log("\t\tStart");
+
+
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
         //Handheld.PlayFullScreenMovie("intro.mp4", Color.black, FullScreenMovieControlMode.CancelOnInput);
         StartCoroutine(ShowPlayerInput());
 
-        firstEntry = false;
+        StartCoroutine(FillRoleList());
 
-        loginList.Add("Шериф");
-        loginList.Add("Следователь");
-        loginList.Add("Медэксперт");
-        loginList.Add("Патрульный");
-        loginList.Add("Бенджамин");
-        loginList.Add("Маркс Доу");
-        loginList.Add("Сесил");
-        loginList.Add("Андрэ");
-        loginList.Add("Мари Майн");
-        loginList.Add("Репортер");
-        loginList.Add("Фотограф");
-        loginList.Add("Редактор");
-        loginList.Add("Мэр");
-        loginList.Add("Детектив");
-        loginList.Add("Cумасшедшая");
-        loginList.Add("Блогер");
-        loginList.Add("Агент ФБР Он");
-        loginList.Add("Агент ФБР Она");
-        loginList.Add("Священник");
-        loginList.Add("Отставной военный");
-        loginList.Add("Кэсси");
-        loginList.Add("Мэри");
-        loginList.Add("Кэйт");
-        loginList.Add("Мейбл");
-        loginList.Add("Джуди");
-        loginList.Add("kosru");
-        loginList.Add("Nadinka");
-        loginList.Add("Морфиус");
-        loginList.Add("Извер");
-        loginList.Add("Алекс");
-        loginList.Add("МН1");
-        loginList.Add("МН2");
-        loginList.Add("МН3");
-        loginList.Add("МН4");
-        loginList.Add("МН5");
-
-
-
+        soundPlayed = false;
         FillLocationDatabase();
+		messageText.text = "";
 
         mapControl.OnMapDrag += eventDragger;
 
     }
 
-    void eventDragger()
-    {
-        DistanceToMarketCalc();
+    IEnumerator FillRoleList() {
+
+        using (UnityWebRequest cu_get = SendCharactersRequest())
+        {
+            // while (true)
+            // {
+            CharacterInfo[] characters;
+            yield return cu_get.SendWebRequest();
+            if (cu_get.error != null)
+            {
+                Debug.Log("\t\t" + "Transmission error \n" + cu_get.error);
+                loadingText.text = "Ошибка передачи данных \n" + cu_get.error;
+                // yield return new WaitForSeconds(10f);
+            }
+            else
+            {
+                string result = cu_get.downloadHandler.text;
+                Debug.Log("CHARS RESULT: |" + result + "|");
+                characters = JsonHelper.getJsonArray<CharacterInfo>(result); //   JsonUtility.FromJson<CharacterInfo[]>(result);
+                                                                             // break;
+                for (int i = 0; i < characters.Length; i++)
+                {
+                    loginList.Add(characters[i]);
+                }
+            }
+            // }
+
+        }
+
+
     }
 
-    void DistanceToMarketCalc()
+    void eventDragger()
+    {
+        DistanceToMarkerCalc();
+    }
+
+    void DistanceToMarkerCalc()
     {
         string candidate = "";
         double distance = double.MaxValue;
@@ -169,27 +183,32 @@ public class MainControlScript : MonoBehaviour
 
     void FillLocationDatabase()
     {
+        Debug.Log("\t\tFillLocationDatabase");
         //locations.Add("Полицейское управление");
         //latitudes.Add(59.4780698);
         //longtitudes.Add(25.0188571);
         //distances.Add(100);
 
-       // locations.Add("Maxima");
-       // latitudes.Add(54.9332387);
+        // locations.Add("Maxima");
+        // latitudes.Add(54.9332387);
         //longtitudes.Add(23.8871722);
         //distances.Add(100);
     }
 
     public void AppQuit()
     {
+        Debug.Log("\t\tQuit");
         Application.Quit();
     }
 
     public void SubmitPlayerName()
     {
-        if (playerName.text.Length > 1 && loginList.Contains(playerName.text))
+        Debug.Log("\t\tSubmitPlayerName");
+        CharacterInfo currentCharacter = loginList.Find(item => item.name.Equals(playerName.text.ToString().Trim()));
+        if (playerName.text.Length > 1 && currentCharacter != null)
         {
-            pName = playerName.text;
+            currentCharacterName = currentCharacter.name;
+            currentCharacterId = currentCharacter.id;
             loadingPanel.SetActive(true);
             loginPanel.SetActive(false);
             StartCoroutine(ServerContact());
@@ -202,6 +221,7 @@ public class MainControlScript : MonoBehaviour
 
     IEnumerator ShowPlayerInput()
     {
+        Debug.Log("\t\tShowPlayerInput");
         yield return new WaitForSeconds(0.1f);
         playerName.gameObject.SetActive(true);
         submitButton.gameObject.SetActive(true);
@@ -209,21 +229,66 @@ public class MainControlScript : MonoBehaviour
 
     public void SendMessageToChat()
     {
-        if (chatMessage.text.Length > 0)
+        Debug.Log("\t\tSendMessageToChat");
+        if (chatMessage.text.Trim().Length > 0)
         {
-            var createuser_url = "http://urbanbaldai.lt/chatsubmit.php" + "?msg=" + System.Uri.EscapeUriString(chatMessage.text) + "&username=" + pName;
-            var cu_get = new WWW(createuser_url);
-            Debug.Log(createuser_url);
-            chatMessage.text = "";
+
+            StartCoroutine(HandleMessageSending());
         }
     }
 
+    IEnumerator HandleMessageSending() {
+        using (UnityWebRequest chatReq = SendChatMessage(currentCharacterId, currentCharacterName, chatMessage.text))
+        {
+            yield return chatReq.SendWebRequest();
+
+            if (chatReq.error != null)
+            {
+                Debug.Log("\t\t" + "Transmission error on chat \n" + chatReq.error);
+                loadingText.text = "Ошибка передачи данных в чат \n" + chatReq.error;
+            }
+            else
+            {
+				lastChatMessage = chatMessage.text + "\n";
+                string result = chatReq.downloadHandler.text;
+                Debug.Log("CHAT RESULT: |" + result + "|");
+
+				messageText.text = messageText.text + messageToChatLine(result);
+                chatMessage.text = "";
+				soundPlayed = false;
+				ScrollChatDown ();
+            }
+        }
+    }
+
+	String messageToChatLine(string message) {
+		string[] parts = message.Split(new String[] { "<#>" }, System.StringSplitOptions.None);
+		String time = UnixTimeStampToDateTime(Convert.ToDouble(parts[2])).ToString("HH:mm:ss");
+
+		return string.Format ("<color=grey>{0}</color> <b>{1}:</b> {2}\n", time, parts[0], parts[1].Trim('\n'));
+	}
+
+    public static DateTime UnixTimeStampToDateTime(double unixTimeStamp)
+    {
+        // Unix timestamp is seconds past epoch
+        System.DateTime dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
+        dtDateTime = dtDateTime.AddSeconds(unixTimeStamp).ToLocalTime();
+        return dtDateTime;
+    }
+
+	void ScrollChatDown ()
+	{
+		scrollView.normalizedPosition = new Vector2 (0, 0);
+	}
+
     IEnumerator ServerContact()
     {
+        Debug.Log("\t\tServerContact");
         if (!Input.location.isEnabledByUser)
         {
-            loadingText.text = "Функция GPS не включена?";
-            yield break;
+            Debug.Log("\t\tGPS disabled");
+            loadingText.text = "Функция GPS не включена?\nВключите и подождите.";
+			yield return new WaitForSeconds(10);
         }
 
         // Start service before querying location
@@ -233,6 +298,7 @@ public class MainControlScript : MonoBehaviour
         int maxWait = 20;
         while (Input.location.status == LocationServiceStatus.Initializing && maxWait > 0)
         {
+            Debug.Log("\t\tGPS init round");
             yield return new WaitForSeconds(1);
             maxWait--;
         }
@@ -240,132 +306,103 @@ public class MainControlScript : MonoBehaviour
         // Service didn't initialize in 20 seconds
         if (maxWait < 1)
         {
-            loadingText.text = "Функция GPS не смогла инициализироваться";
+            Debug.Log("\t\tCan't init gps");
+            loadingText.text = "Функция GPS не смогла инициализироваться, давайте перезапустимся?";
             yield break;
         }
 
         // Connection has failed
         if (Input.location.status == LocationServiceStatus.Failed)
         {
-            loadingText.text = "Невозможно установить локацию";
-            yield break;
+            Debug.Log("\t\tCan't get location");
+            loadingText.text = "Невозможно установить локацию.\n Подождем и попробуем еще.";
+			yield return new WaitForSeconds(10);
         }
         else
         {
 
             while (true)
             {
+                Debug.Log("\t\tData submit round");
 
-
-                var createuser_url = "http://urbanbaldai.lt/datasubmit.php" + "?latitude=" + Input.location.lastData.latitude + "&longtitude=" + Input.location.lastData.longitude + "&altitude=" + Input.location.lastData.altitude + "&horizontalAccuracy=" + Input.location.lastData.horizontalAccuracy + "&timestamp=" + Input.location.lastData.timestamp + "&username=" + pName;
-                var cu_get = new WWW(createuser_url);
-                Debug.Log("quering: " + createuser_url);
-                yield return cu_get;
-
-                if (cu_get.error != null)
+                using (UnityWebRequest cu_get = SendDataRequest(currentCharacterId))
                 {
-                    loadingText.text = "Ошибка передачи данных " + cu_get.error;
-                }
-                else
-                {
+                    yield return cu_get.SendWebRequest();
 
-                    loadingText.gameObject.SetActive(false);
-                    loadingPanel.SetActive(false);
-                    textPanel.SetActive(true);
-                    messageText.gameObject.SetActive(true);
-
-                    string result = cu_get.text;
-                    ReulstInfo stringArray = JsonUtility.FromJson<ReulstInfo>(result);
-
-                    string lastMessage = messageText.text;
-
-                    messageText.text = stringArray.info;
-
-                    if (lastMessage != messageText.text && firstEntry)
+                    if (cu_get.error != null)
                     {
-                        newMessageSound.Play();
-                    }
-
-                    firstEntry = true;
-
-
-                    timerInt = int.Parse(stringArray.timer);
-
-                    if (timerInt > 0)
-                    {
-                        timerObject.SetActive(true);
+                        Debug.Log("\t\t" + "Transmission error \n" + cu_get.error);
+                        loadingText.text = "Ошибка передачи данных \n" + cu_get.error;
+                        yield return new WaitForSeconds(10f);
                     }
                     else
                     {
-                        timerObject.SetActive(false);
+
+                        loadingText.gameObject.SetActive(false);
+                        loadingPanel.SetActive(false);
+                        textPanel.SetActive(true);
+                        messageText.gameObject.SetActive(true);
+
+                        string result = cu_get.downloadHandler.text;
+						Debug.Log ("DATA SUBMIT RESULT (must be chat): " + result);
+						MessageEntity charMessages = JsonUtility.FromJson<MessageEntity>(result);
+						if (charMessages.characterId == currentCharacterId && charMessages.messages.Length > 0) {
+							Debug.Log ("THOSE ARE OUR MESSAGES");
+							List<string> chatLines = new List<string> ();
+							string[] lines = charMessages.messages.Split (new String[] { "\n" }, StringSplitOptions.RemoveEmptyEntries);
+							for (int i = 0; i < lines.Length; i++) {
+								chatLines.Add (messageToChatLine (lines [i]));
+							}
+							Debug.Log ("GOT " + chatLines.Count + " MESSAGES");
+							messageText.text = String.Join ("", chatLines.ToArray ());
+							if (!chatLines [chatLines.Count - 1].EndsWith (lastChatMessage)
+							    && (!soundPlayed || !chatLines [chatLines.Count - 1].Equals (lastReceivedChatLine))) {
+								newMessageSound.Play ();
+								// lastChatMessage = chatLines [chatLines.Count - 1];
+								soundPlayed = true;
+								lastReceivedChatLine = chatLines [chatLines.Count - 1];
+							}
+							ScrollChatDown();
+						} else {
+							Debug.Log ("THOSE ARE NOT OURS: " + charMessages.characterId + "|" + charMessages.messages.Length);
+						}
+
+                        DistanceToMarkerCalc();
+                        yield return new WaitForSeconds(10f);
                     }
-
-
-                    DistanceToMarketCalc();
-                    yield return new WaitForSeconds(5f);
                 }
-
-
             }
 
         }
     }
-}
 
-
-public class Coordinates
-{
-    public double Latitude { get; private set; }
-    public double Longitude { get; private set; }
-
-    public Coordinates(double latitude, double longitude)
+    private UnityWebRequest SendCharactersRequest()
     {
-        Latitude = latitude;
-        Longitude = longitude;
-    }
-}
-public static class CoordinatesDistanceExtensions
-{
-    public static double DistanceTo(this Coordinates baseCoordinates, Coordinates targetCoordinates)
-    {
-        return DistanceTo(baseCoordinates, targetCoordinates, UnitOfLength.Kilometers);
+        return UnityWebRequest.Get(HOST_URL + "/api/characters");
     }
 
-    public static double DistanceTo(this Coordinates baseCoordinates, Coordinates targetCoordinates, UnitOfLength unitOfLength)
+    private UnityWebRequest SendDataRequest(int characterId)
     {
-        var baseRad = Math.PI * baseCoordinates.Latitude / 180;
-        var targetRad = Math.PI * targetCoordinates.Latitude / 180;
-        var theta = baseCoordinates.Longitude - targetCoordinates.Longitude;
-        var thetaRad = Math.PI * theta / 180;
+        WWWForm form = new WWWForm();
+        form.AddField("characterId", Convert.ToString(characterId));
+        form.AddField("latitude", Convert.ToString(Input.location.lastData.latitude));
+        form.AddField("longitude", Convert.ToString(Input.location.lastData.longitude));
+        form.AddField("timestamp", Convert.ToString((int) Input.location.lastData.timestamp));
 
-        double dist =
-            Math.Sin(baseRad) * Math.Sin(targetRad) + Math.Cos(baseRad) *
-            Math.Cos(targetRad) * Math.Cos(thetaRad);
-        dist = Math.Acos(dist);
-
-        dist = dist * 180 / Math.PI;
-        dist = dist * 60 * 1.1515;
-
-        return unitOfLength.ConvertFromMiles(dist);
-    }
-}
-
-public class UnitOfLength
-{
-    public static UnitOfLength Meters = new UnitOfLength(0.001609344);
-    public static UnitOfLength Kilometers = new UnitOfLength(1.609344);
-    public static UnitOfLength NauticalMiles = new UnitOfLength(0.8684);
-    public static UnitOfLength Miles = new UnitOfLength(1);
-
-    private readonly double _fromMilesFactor;
-
-    private UnitOfLength(double fromMilesFactor)
-    {
-        _fromMilesFactor = fromMilesFactor;
+        return UnityWebRequest.Post(HOST_URL + "/api/coordinates/player/location", form);
     }
 
-    public double ConvertFromMiles(double input)
+    private UnityWebRequest SendChatMessage(int characterId, string characterName, string message)
     {
-        return input * _fromMilesFactor;
+        string processedMsg = characterName + "<#>" + message.Replace('"', '\'');
+        string payload = "{\"type\": \"msg\", \"characterId\": " + Convert.ToString(characterId) + ", \"message\":\"" + processedMsg + "\"}";
+
+        Debug.Log("CHAT PAYLOAD: |" + payload + "|");
+        WWWForm form = new WWWForm();
+        form.AddField("characterId", Convert.ToString(characterId));
+        form.AddField("type", "msg");
+        form.AddField("message", processedMsg);
+        UnityWebRequest result = UnityWebRequest.Post(HOST_URL + "/api/message", form);
+        return result;
     }
 }
