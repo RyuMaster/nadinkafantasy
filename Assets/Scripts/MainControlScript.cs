@@ -102,7 +102,7 @@ public class MainControlScript : MonoBehaviour
         StartCoroutine(ShowPlayerInput());
 
         StartCoroutine(FillRoleList());
-        soundPlayed = false;
+
 
 		messageText.text = "";
 
@@ -111,7 +111,7 @@ public class MainControlScript : MonoBehaviour
     }
 
     IEnumerator FillRoleList() {
-
+		
         using (UnityWebRequest cu_get = SendCharactersRequest())
         {
             CharacterInfo[] characters;
@@ -126,7 +126,7 @@ public class MainControlScript : MonoBehaviour
             {
                 string result = cu_get.downloadHandler.text;
                 Debug.Log("CHARS RESULT: |" + result + "|");
-                characters = JsonHelper.getJsonArray<CharacterInfo>(result); /
+                characters = JsonHelper.getJsonArray<CharacterInfo>(result);
                 for (int i = 0; i < characters.Length; i++)
                 {
                     loginList.Add(characters[i]);
@@ -238,7 +238,6 @@ public class MainControlScript : MonoBehaviour
             currentCharacterId = currentCharacter.id;
             loadingPanel.SetActive(true);
             loginPanel.SetActive(false);
-			// StartCoroutine(LocationUpdate());
 			StartCoroutine(ServerContact());
         }
         else
@@ -391,6 +390,7 @@ public class MainControlScript : MonoBehaviour
         }
         else
         {
+			int reqCount = 0;
 
             while (true)
             {
@@ -431,7 +431,10 @@ public class MainControlScript : MonoBehaviour
 								lastReceivedChatLine = chatLines [chatLines.Count - 1];
 							}
 							ScrollChatDown();
-							LocationUpdate();
+							if (reqCount % 10 == 0) {
+								LocationUpdate ();
+							}
+							reqCount++;
 						} else {
 							Debug.Log ("THOSE ARE NOT OURS: " + charMessages.characterId + "|" + charMessages.messages.Length);
 						}
