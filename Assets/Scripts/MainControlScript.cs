@@ -50,7 +50,7 @@ public class LocationEntity
 
 public class MainControlScript : MonoBehaviour
 {
-    private readonly String HOST_URL = "http://192.168.1.6:3001";
+	private readonly String HOST_URL = "http://198.211.109.3:3001"; // "http://192.168.1.6:3001";
 
     public GameObject loginPanel;
     public GameObject loadingPanel;
