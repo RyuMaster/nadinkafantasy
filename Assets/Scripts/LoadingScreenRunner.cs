@@ -8,8 +8,8 @@ public class LoadingScreenRunner : MonoBehaviour {
     public GameObject img2;
     public GameObject img3;
 
-    float tick = 0;
-    int stage = 0;
+//    float tick = 0;
+//    int stage = 0;
 
      void Start()
     {

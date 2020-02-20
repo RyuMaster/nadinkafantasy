@@ -36,6 +36,17 @@ public class CharacterInfo
     public string description;
 }
 
+[Serializable]
+public class LocationEntity
+{
+	public int id;
+	public string name;
+	// public string description;
+	public float latitude;
+	public float longitude;
+}
+
+
 
 public class MainControlScript : MonoBehaviour
 {
@@ -50,6 +61,7 @@ public class MainControlScript : MonoBehaviour
     public Text loadingText;
     public Text messageText;
 	public ScrollRect scrollView;
+	public OnlineMaps map;
 
     private string currentCharacterName = "";
     private int currentCharacterId = -1;
@@ -65,10 +77,10 @@ public class MainControlScript : MonoBehaviour
     //public List<double> distances;
 
 	public List<CharacterInfo> loginList = new List<CharacterInfo>();
+	private List<OnlineMapsMarker> markers = new List<OnlineMapsMarker>();
 	private string lastChatMessage = "";
 	private string lastReceivedChatLine = "";
 
-    public OnlineMaps map;
     public OnlineMapsUIImageControl mapControl;
 
 
@@ -90,9 +102,8 @@ public class MainControlScript : MonoBehaviour
         StartCoroutine(ShowPlayerInput());
 
         StartCoroutine(FillRoleList());
-
         soundPlayed = false;
-        FillLocationDatabase();
+
 		messageText.text = "";
 
         mapControl.OnMapDrag += eventDragger;
@@ -103,33 +114,63 @@ public class MainControlScript : MonoBehaviour
 
         using (UnityWebRequest cu_get = SendCharactersRequest())
         {
-            // while (true)
-            // {
             CharacterInfo[] characters;
             yield return cu_get.SendWebRequest();
             if (cu_get.error != null)
             {
                 Debug.Log("\t\t" + "Transmission error \n" + cu_get.error);
                 loadingText.text = "Ошибка передачи данных \n" + cu_get.error;
-                // yield return new WaitForSeconds(10f);
+                yield return new WaitForSeconds(5f);
             }
             else
             {
                 string result = cu_get.downloadHandler.text;
                 Debug.Log("CHARS RESULT: |" + result + "|");
-                characters = JsonHelper.getJsonArray<CharacterInfo>(result); //   JsonUtility.FromJson<CharacterInfo[]>(result);
-                                                                             // break;
+                characters = JsonHelper.getJsonArray<CharacterInfo>(result); /
                 for (int i = 0; i < characters.Length; i++)
                 {
                     loginList.Add(characters[i]);
                 }
             }
-            // }
-
         }
-
-
     }
+
+
+//	IEnumerator FillLocationDatabase()
+//	{
+//		Debug.Log("\t\tFillLocationDatabase");
+//		using (UnityWebRequest cu_get = SendLocationsRequest())
+//		{
+//			LocationEntity[] locations;
+//			yield return cu_get.SendWebRequest();
+//			if (cu_get.error != null)
+//			{
+//				Debug.Log("\t\t" + "Transmission error \n" + cu_get.error);
+//				loadingText.text = "Ошибка передачи данных \n" + cu_get.error;
+//				yield return new WaitForSeconds(5f);
+//			}
+//			else
+//			{
+//				string result = cu_get.downloadHandler.text;
+//				Debug.Log("LOCATIONS RESULT: |" + result + "|");
+//				locations = JsonHelper.getJsonArray<LocationEntity>(result);
+//				markers = new List<OnlineMapsMarker>();
+//
+//				Debug.Log (map);
+//				Debug.Log (OnlineMaps.instance);
+//
+//				for (int i = 0; i < locations.Length; i++)
+//				{
+//					Debug.Log ("Processing marker for " + locations [i].name);
+//					OnlineMapsMarker marker = new OnlineMapsMarker ();
+//					marker.SetPosition (locations [i].longitude, locations [i].latitude);
+//					marker.label = locations [i].name;
+//					markers.Add (marker);
+//				}
+//			}
+//		}
+//	}
+
 
     void eventDragger()
     {
@@ -181,20 +222,6 @@ public class MainControlScript : MonoBehaviour
         }
     }
 
-    void FillLocationDatabase()
-    {
-        Debug.Log("\t\tFillLocationDatabase");
-        //locations.Add("Полицейское управление");
-        //latitudes.Add(59.4780698);
-        //longtitudes.Add(25.0188571);
-        //distances.Add(100);
-
-        // locations.Add("Maxima");
-        // latitudes.Add(54.9332387);
-        //longtitudes.Add(23.8871722);
-        //distances.Add(100);
-    }
-
     public void AppQuit()
     {
         Debug.Log("\t\tQuit");
@@ -211,7 +238,8 @@ public class MainControlScript : MonoBehaviour
             currentCharacterId = currentCharacter.id;
             loadingPanel.SetActive(true);
             loginPanel.SetActive(false);
-            StartCoroutine(ServerContact());
+			// StartCoroutine(LocationUpdate());
+			StartCoroutine(ServerContact());
         }
         else
         {
@@ -251,9 +279,7 @@ public class MainControlScript : MonoBehaviour
             {
 				lastChatMessage = chatMessage.text + "\n";
                 string result = chatReq.downloadHandler.text;
-                Debug.Log("CHAT RESULT: |" + result + "|");
-
-				messageText.text = messageText.text + messageToChatLine(result);
+                messageText.text = messageText.text + messageToChatLine(result);
                 chatMessage.text = "";
 				soundPlayed = false;
 				ScrollChatDown ();
@@ -279,6 +305,51 @@ public class MainControlScript : MonoBehaviour
 	void ScrollChatDown ()
 	{
 		scrollView.normalizedPosition = new Vector2 (0, 0);
+	}
+
+	void LocationUpdate() {
+ 
+			Debug.Log ("\t\tLocation update round");
+			// Debug.Log ("\t\t MAP == " + map);
+
+			using (UnityWebRequest locReq = SendLocationsRequest ()) {
+				LocationEntity[] locations;
+				locReq.SendWebRequest ();
+				while (!locReq.isDone) {
+					
+				}
+				if (locReq.error != null) {
+					Debug.Log ("\t\t" + "Transmission error for locations \n" + locReq.error);
+					loadingText.text = "Ошибка передачи данных локаций \n" + locReq.error;
+					return;
+				} else {
+					string result = locReq.downloadHandler.text;
+					// Debug.Log ("LOCATIONS RESULT: |" + result + "|");
+					locations = JsonHelper.getJsonArray<LocationEntity> (result);
+					markers = new List<OnlineMapsMarker> ();
+
+					for (int i = 0; i < locations.Length; i++) {
+						// Debug.Log ("PROCESSING MARKER FOR " + locations [i].name);
+						OnlineMapsMarker marker = new OnlineMapsMarker ();
+						marker.SetPosition (locations [i].longitude, locations [i].latitude);
+						marker.label = locations [i].name;
+						markers.Add (marker);
+					}
+
+
+					for (int i = 0; i< map.markers.Length; i++)
+					{
+
+						if (map.markers[i].label != "Текущая Позиция")
+						{
+							map.RemoveMarker (map.markers [i], true);
+						}
+					}
+				 
+					Debug.Log ("ADDING LOCATION MARKERS");
+					markers.ForEach (marker => map.AddMarker (marker));
+				}
+			}
 	}
 
     IEnumerator ServerContact()
@@ -315,7 +386,7 @@ public class MainControlScript : MonoBehaviour
         if (Input.location.status == LocationServiceStatus.Failed)
         {
             Debug.Log("\t\tCan't get location");
-            loadingText.text = "Невозможно установить локацию.\n Подождем и попробуем еще.";
+            loadingText.text = "Невозможно узнать геолокацию.\n Подождем и попробуем еще.";
 			yield return new WaitForSeconds(10);
         }
         else
@@ -323,31 +394,29 @@ public class MainControlScript : MonoBehaviour
 
             while (true)
             {
-                Debug.Log("\t\tData submit round");
 
-                using (UnityWebRequest cu_get = SendDataRequest(currentCharacterId))
+                Debug.Log("\t\t Data submit round");
+
+				using (UnityWebRequest dataReq = SendDataRequest(currentCharacterId))
                 {
-                    yield return cu_get.SendWebRequest();
+                    yield return dataReq.SendWebRequest();
 
-                    if (cu_get.error != null)
+                    if (dataReq.error != null)
                     {
-                        Debug.Log("\t\t" + "Transmission error \n" + cu_get.error);
-                        loadingText.text = "Ошибка передачи данных \n" + cu_get.error;
+                        Debug.Log("\t\t" + "Transmission error for data \n" + dataReq.error);
+                        loadingText.text = "Ошибка передачи данных \n" + dataReq.error;
                         yield return new WaitForSeconds(10f);
                     }
                     else
                     {
+						loadingText.gameObject.SetActive(false);
+						loadingPanel.SetActive(false);
+						textPanel.SetActive(true);
+						messageText.gameObject.SetActive(true);
 
-                        loadingText.gameObject.SetActive(false);
-                        loadingPanel.SetActive(false);
-                        textPanel.SetActive(true);
-                        messageText.gameObject.SetActive(true);
-
-                        string result = cu_get.downloadHandler.text;
-						Debug.Log ("DATA SUBMIT RESULT (must be chat): " + result);
+                        string result = dataReq.downloadHandler.text;
 						MessageEntity charMessages = JsonUtility.FromJson<MessageEntity>(result);
 						if (charMessages.characterId == currentCharacterId && charMessages.messages.Length > 0) {
-							Debug.Log ("THOSE ARE OUR MESSAGES");
 							List<string> chatLines = new List<string> ();
 							string[] lines = charMessages.messages.Split (new String[] { "\n" }, StringSplitOptions.RemoveEmptyEntries);
 							for (int i = 0; i < lines.Length; i++) {
@@ -358,19 +427,20 @@ public class MainControlScript : MonoBehaviour
 							if (!chatLines [chatLines.Count - 1].EndsWith (lastChatMessage)
 							    && (!soundPlayed || !chatLines [chatLines.Count - 1].Equals (lastReceivedChatLine))) {
 								newMessageSound.Play ();
-								// lastChatMessage = chatLines [chatLines.Count - 1];
 								soundPlayed = true;
 								lastReceivedChatLine = chatLines [chatLines.Count - 1];
 							}
 							ScrollChatDown();
+							LocationUpdate();
 						} else {
 							Debug.Log ("THOSE ARE NOT OURS: " + charMessages.characterId + "|" + charMessages.messages.Length);
 						}
-
                         DistanceToMarkerCalc();
                         yield return new WaitForSeconds(10f);
                     }
                 }
+
+
             }
 
         }
@@ -380,6 +450,12 @@ public class MainControlScript : MonoBehaviour
     {
         return UnityWebRequest.Get(HOST_URL + "/api/characters");
     }
+
+	private UnityWebRequest SendLocationsRequest()
+	{
+		return UnityWebRequest.Get(HOST_URL + "/api/locations");
+	}
+
 
     private UnityWebRequest SendDataRequest(int characterId)
     {
