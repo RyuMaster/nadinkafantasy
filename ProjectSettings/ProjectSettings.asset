@@ -258,10 +258,17 @@ PlayerSettings:
   androidGamepadSupportLevel: 0
   resolutionDialogBanner: {fileID: 0}
   m_BuildTargetIcons:
+  - m_BuildTarget: 
+    m_Icons:
+    - serializedVersion: 2
+      m_Icon: {fileID: 2800000, guid: 7740abff9f345fb4589b409f7ea86429, type: 3}
+      m_Width: 128
+      m_Height: 128
+      m_Kind: 0
   - m_BuildTarget: Android
     m_Icons:
     - serializedVersion: 2
-      m_Icon: {fileID: 2800000, guid: d0deff49668ccc3459dc9c34a9983e10, type: 3}
+      m_Icon: {fileID: 0}
       m_Width: 192
       m_Height: 192
       m_Kind: 0
@@ -289,13 +296,6 @@ PlayerSettings:
       m_Icon: {fileID: 0}
       m_Width: 36
       m_Height: 36
-      m_Kind: 0
-  - m_BuildTarget: 
-    m_Icons:
-    - serializedVersion: 2
-      m_Icon: {fileID: 2800000, guid: d0deff49668ccc3459dc9c34a9983e10, type: 3}
-      m_Width: 128
-      m_Height: 128
       m_Kind: 0
   m_BuildTargetBatching: []
   m_BuildTargetGraphicsAPIs: []
