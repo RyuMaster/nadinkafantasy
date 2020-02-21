@@ -8,11 +8,12 @@ public class LoadingScreenRunner : MonoBehaviour {
     public GameObject img2;
     public GameObject img3;
 
-    float tick = 0;
-    int stage = 0;
+//    float tick = 0;
+//    int stage = 0;
 
      void Start()
     {
+        Debug.Log("\t\tLSR Start");
         img1.SetActive(false);
         img2.SetActive(false);
         img3.SetActive(false);
@@ -24,36 +25,26 @@ public class LoadingScreenRunner : MonoBehaviour {
     {
 
 
-        tick += Time.deltaTime;
+        //tick += Time.deltaTime;
 
-        if (tick >= 0.15f)
-        {
-            stage++;
-            tick = 0;
-            if (stage == 4)
-            {
-                stage = 0;
-            }
-
-            if (stage == 1)
-            {
-                img1.SetActive(true);
-            }
-            if (stage == 2)
-            {
-                img2.SetActive(true);
-            }
-            if (stage == 3)
-            {
-                img3.SetActive(true);
-            }
-            if (stage == 0)
-            {
-                img1.SetActive(false);
-                img2.SetActive(false);
-                img3.SetActive(false);
-            }
-        }
+        //if (tick >= 0.55f)
+        //{
+        //    stage++;
+        //    tick = 0;
+        //    switch (stage) {
+        //        case 4: stage = 0;
+        //            img1.SetActive(false);
+        //            img2.SetActive(false);
+        //            img3.SetActive(false);
+        //            break;
+        //        case 1: img1.SetActive(true);
+        //            break;
+        //        case 2: img2.SetActive(true);
+        //            break;
+        //        case 3: img3.SetActive(true);
+        //            break;
+        //    }
+        //}
 
 	}
 }
